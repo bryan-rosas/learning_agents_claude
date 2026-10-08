@@ -15,8 +15,8 @@ Open `index.html` directly, or `npx serve .` and visit `http://localhost:3000`.
 All logic lives in `game.js` (loaded by `index.html` via a plain `<script>`, `'use strict'`). Top to bottom:
 
 - **Input**: `keys` (held) and `justPressed` (edge-triggered). Read edge presses via `pressed(code)`, which consumes the flag.
-- **Entity classes**: `Bullet`, `Asteroid`, `Ship`, `Particle`. Each has `update(dt)`/`draw()` and a `dead` flag; arrays are filtered on `dead` each frame. Entities draw straight to the global `ctx`.
-- **Global state**: `ship, bullets, asteroids, particles, score, lives, level`, plus `state` (`'playing' | 'dead' | 'gameover'`) and `deadTimer`. `initGame()` resets everything; `nextLevel()` spawns `3 + level` asteroids.
+- **Entity classes**: `Bullet`, `Asteroid`, `PowerUp`, `Ship`, `Particle`. Each has `update(dt)`/`draw()` and a `dead` flag; arrays are filtered on `dead` each frame. Entities draw straight to the global `ctx`.
+- **Global state**: `ship, bullets, asteroids, particles, powerups, score, lives, level, tripleTimer, powerupSpawned`, plus `state` (`'playing' | 'dead' | 'gameover'`) and `deadTimer`. `initGame()` resets everything; `nextLevel()` spawns `3 + level` asteroids.
 - **Loop**: `loop(ts)` → `update(dt)` → `draw()`. `dt` is in seconds, clamped to 0.05.
 
 Conventions:
@@ -26,4 +26,5 @@ Conventions:
 
 ## Notes
 
-- `README.md` mentions power-ups and the "estrella fugaz" asteroid type, but `game.js` does not currently implement them.
+- Triple-shot power-up is implemented: `PowerUp` drops (`TRIPLE_CHANCE`) when a bullet destroys an asteroid, max once per level (`powerupSpawned`). Picking it up sets `tripleTimer = TRIPLE_DURATION`; `Ship.tryShoot()` fires 3 bullets while it is > 0. Effect persists across levels, lost on death.
+- `README.md` also mentions the "estrella fugaz" asteroid type and other power-ups, which `game.js` does not implement.
