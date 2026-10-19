@@ -42,6 +42,11 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Sistema de puntuación** clásico de Tetris (100 / 300 / 500 / 800 multiplicado por nivel).
 - **Niveles** que aumentan cada 10 líneas y aceleran la caída.
 - **Pausa** y **Game Over** con opción de reinicio.
+- **Pantalla de inicio** con botón **Jugar**: la partida no empieza hasta pulsarlo.
+- **Tabla de records local** (top 5) guardada en `localStorage`: nombre, puntos, líneas, mejor combo y fecha. Si tu puntuación entra en el top 5, al terminar puedes escribir tu nombre (máx. 12 caracteres, por defecto "Jugador") y pulsar **Guardar**; tu entrada se resalta y, si es la primera, aparece **¡Nuevo récord!**.
+- **Combos**: piezas consecutivas que limpian al menos una línea. Se guarda el mejor combo de cada partida.
+- **Estadísticas** históricas: mejor combo y máximo de líneas en una partida.
+- Botón **Resetear records** (pide confirmación) para borrar tabla y estadísticas.
 
 ---
 
@@ -85,6 +90,9 @@ Después abre `http://localhost:8000` en el navegador.
 | `↓`       | Soft drop (bajar más rápido)      |
 | `Espacio` | Hard drop (caída instantánea)     |
 | `P`       | Pausar / reanudar                 |
+| `Enter`   | Guardar el nombre en Game Over    |
+
+> Mientras escribes el nombre en el campo de texto, las teclas del juego se ignoran.
 
 ---
 
@@ -98,7 +106,7 @@ Define la estructura visual:
 
 - Un `<canvas id="board">` de **300 × 600** píxeles donde se renderiza el tablero.
 - Un panel lateral con `SCORE`, `LINES`, `LEVEL`, vista de la siguiente pieza y la lista de controles.
-- Un overlay para los estados **PAUSA** y **GAME OVER**.
+- Un overlay para los estados **inicio**, **PAUSA** y **GAME OVER**, con el formulario de nombre y la tabla de records.
 
 ### 2. `style.css`
 
@@ -117,10 +125,14 @@ Contiene toda la lógica del juego. A grandes rasgos:
 - **Puntuación**: usa la tabla clásica `[0, 100, 300, 500, 800]` multiplicada por el nivel actual; el hard drop suma 2 puntos por celda recorrida y el soft drop 1 punto por fila.
 - **Nivel y velocidad**: el nivel sube cada 10 líneas; la velocidad de caída se calcula como `max(100, 1000 − (level − 1) × 90)` milisegundos.
 - **Ghost piece** (`ghostY`): proyecta la posición final de la pieza actual hacia abajo y la dibuja con `globalAlpha = 0.2`.
+- **Combos** (`updateCombo`): `clearLines` incrementa `combo` si la pieza limpió líneas y lo pone a 0 si no; `maxCombo` guarda el máximo de la partida.
+- **Records** (`loadRecords`, `addRecord`, `renderRecords`): JSON en `localStorage['tetris.records']` con el top 5 `{ name, score, lines, maxCombo, date }`; las estadísticas van en `localStorage['tetris.stats']` (`{ bestCombo, maxLines }`). Si el JSON está corrupto o `localStorage` no está disponible, se usa una tabla vacía.
 
 ### Flujo del juego
 
 ```
+showStart()                         → overlay de inicio + tabla de records
+  ↓ (botón "Jugar")
 init()
   ├─ createBoard()                  → matriz vacía
   ├─ next = randomPiece()
@@ -136,7 +148,7 @@ init()
    keydown → mover / rotar / soft-drop / hard-drop / pausa
 ```
 
-Cuando una pieza recién generada ya colisiona al aparecer (`spawn`), se dispara `endGame()` y se muestra el overlay de **Game Over**.
+Cuando una pieza recién generada ya colisiona al aparecer (`spawn`), se dispara `endGame()` y se muestra el overlay de **Game Over**, con el formulario de nombre si la puntuación entra en el top 5.
 
 ---
 
@@ -176,6 +188,11 @@ Algunos parámetros fáciles de tunear en `game.js`:
 | `COLORS`       | Paleta de colores por tipo de pieza      | 7 colores             |
 | `LINE_SCORES`  | Puntos por 1, 2, 3 o 4 líneas eliminadas | `[0,100,300,500,800]` |
 | `dropInterval` | Velocidad inicial de caída en ms         | `1000`                |
+| `RECORDS_KEY`  | Clave de `localStorage` de los records   | `'tetris.records'`    |
+| `STATS_KEY`    | Clave de `localStorage` de estadísticas  | `'tetris.stats'`      |
+| `MAX_RECORDS`  | Entradas en la tabla de records          | `5`                   |
+| `NAME_MAX`     | Longitud máxima del nombre               | `12`                  |
+| `DEFAULT_NAME` | Nombre por defecto                       | `'Jugador'`           |
 
 > Si cambias `COLS`, `ROWS` o `BLOCK`, recuerda ajustar también `width` y `height` del `<canvas id="board">` en `index.html` para que coincida (`COLS × BLOCK` × `ROWS × BLOCK`).
 
