@@ -42,6 +42,7 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Sistema de puntuación** clásico de Tetris (100 / 300 / 500 / 800 multiplicado por nivel).
 - **Niveles** que aumentan cada 10 líneas y aceleran la caída.
 - **Pausa** y **Game Over** con opción de reinicio.
+- **Temas visuales (skins)** seleccionables: _Retro_, _Neón_ (brillo con `shadowBlur`), _Pastel_ (bloques redondeados) y _Pixel_ (textura de damero). El cambio es instantáneo y se guarda en `localStorage`.
 
 ---
 
@@ -85,6 +86,7 @@ Después abre `http://localhost:8000` en el navegador.
 | `↓`       | Soft drop (bajar más rápido)      |
 | `Espacio` | Hard drop (caída instantánea)     |
 | `P`       | Pausar / reanudar                 |
+| Selector `SKIN` | Cambiar el tema visual (ratón)    |
 
 ---
 
@@ -97,7 +99,7 @@ El juego se compone de tres archivos que cooperan:
 Define la estructura visual:
 
 - Un `<canvas id="board">` de **300 × 600** píxeles donde se renderiza el tablero.
-- Un panel lateral con `SCORE`, `LINES`, `LEVEL`, vista de la siguiente pieza y la lista de controles.
+- Un panel lateral con `SCORE`, `LINES`, `LEVEL`, vista de la siguiente pieza, el selector de skin (`<select id="skin-select">`) y la lista de controles.
 - Un overlay para los estados **PAUSA** y **GAME OVER**.
 
 ### 2. `style.css`
@@ -117,6 +119,7 @@ Contiene toda la lógica del juego. A grandes rasgos:
 - **Puntuación**: usa la tabla clásica `[0, 100, 300, 500, 800]` multiplicada por el nivel actual; el hard drop suma 2 puntos por celda recorrida y el soft drop 1 punto por fila.
 - **Nivel y velocidad**: el nivel sube cada 10 líneas; la velocidad de caída se calcula como `max(100, 1000 − (level − 1) × 90)` milisegundos.
 - **Ghost piece** (`ghostY`): proyecta la posición final de la pieza actual hacia abajo y la dibuja con `globalAlpha = 0.2`.
+- **Skins** (`SKINS`, `skin`, `applySkin`): cada skin define `colors`, `bg`, `grid` y su propio renderizador de bloque; `drawBlock` delega en `skin.drawBlock`. Al cambiar de skin se redibujan tablero y NEXT al instante (incluso en pausa o game over) y la elección se guarda en `localStorage` (`tetris.skin`).
 
 ### Flujo del juego
 
@@ -174,6 +177,8 @@ Algunos parámetros fáciles de tunear en `game.js`:
 | `ROWS`         | Filas del tablero                        | `20`                  |
 | `BLOCK`        | Tamaño en píxeles de cada celda          | `30`                  |
 | `COLORS`       | Paleta de colores por tipo de pieza      | 7 colores             |
+| `SKINS`        | Temas visuales (colores, fondo, grid, estilo de bloque) | `retro`, `neon`, `pastel`, `pixel` |
+| `SKIN_KEY`     | Clave de `localStorage` para el skin     | `'tetris.skin'`       |
 | `LINE_SCORES`  | Puntos por 1, 2, 3 o 4 líneas eliminadas | `[0,100,300,500,800]` |
 | `dropInterval` | Velocidad inicial de caída en ms         | `1000`                |
 
