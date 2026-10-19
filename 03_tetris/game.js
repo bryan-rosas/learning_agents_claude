@@ -39,6 +39,42 @@ const overlay = document.getElementById('overlay');
 const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
+const skinSelect = document.getElementById('skin-select');
+
+// ---- Skins / temas visuales ----
+const SKINS = {
+  retro: {
+    name: 'Retro',
+    colors: COLORS,
+    bg: '#1a1a25',
+    grid: '#22222e',
+    drawBlock: drawBlockRetro,
+  },
+  neon: {
+    name: 'Neón',
+    colors: [null, '#00f0ff', '#fff200', '#ff00ff', '#39ff14', '#ff073a', '#4d4dff', '#ff9900'],
+    bg: '#000000',
+    grid: '#101018',
+    drawBlock: drawBlockNeon,
+  },
+  pastel: {
+    name: 'Pastel',
+    colors: [null, '#a0e7e5', '#fdfd96', '#cdb4db', '#b5ead7', '#ffadad', '#a2d2ff', '#ffd6a5'],
+    bg: '#2b2838',
+    grid: '#353146',
+    drawBlock: drawBlockPastel,
+  },
+  pixel: {
+    name: 'Pixel',
+    colors: [null, '#3cbcfc', '#f8b800', '#b53cf8', '#58d854', '#f83800', '#0058f8', '#f87858'],
+    bg: '#14141c',
+    grid: '#1e1e2a',
+    drawBlock: drawBlockPixel,
+  },
+};
+const SKIN_KEY = 'tetris.skin';
+
+let skin = SKINS.retro;
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
 
@@ -158,18 +194,79 @@ function updateHUD() {
 
 function drawBlock(context, x, y, colorIndex, size, alpha) {
   if (!colorIndex) return;
-  const color = COLORS[colorIndex];
+  const color = skin.colors[colorIndex];
   context.globalAlpha = alpha ?? 1;
-  context.fillStyle = color;
-  context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
-  // highlight
-  context.fillStyle = 'rgba(255,255,255,0.12)';
-  context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
+  skin.drawBlock(context, x * size, y * size, color, size);
   context.globalAlpha = 1;
 }
 
+// ---- Renderizadores de bloque por skin ----
+function drawBlockRetro(context, px, py, color, size) {
+  context.fillStyle = color;
+  context.fillRect(px + 1, py + 1, size - 2, size - 2);
+  // highlight
+  context.fillStyle = 'rgba(255,255,255,0.12)';
+  context.fillRect(px + 1, py + 1, size - 2, 4);
+}
+
+function drawBlockNeon(context, px, py, color, size) {
+  context.shadowBlur = 12;
+  context.shadowColor = color;
+  context.strokeStyle = color;
+  context.lineWidth = 2;
+  context.strokeRect(px + 3, py + 3, size - 6, size - 6);
+  // reset de sombra para no afectar al resto
+  context.shadowBlur = 0;
+  context.shadowColor = 'transparent';
+  // relleno translúcido sin glow
+  const a = context.globalAlpha;
+  context.globalAlpha = a * 0.35;
+  context.fillStyle = color;
+  context.fillRect(px + 5, py + 5, size - 10, size - 10);
+  context.globalAlpha = a;
+}
+
+function drawBlockPastel(context, px, py, color, size) {
+  context.beginPath();
+  context.roundRect(px + 2, py + 2, size - 4, size - 4, size * 0.25);
+  context.fillStyle = color;
+  context.fill();
+  // brillo suave arriba
+  context.beginPath();
+  context.roundRect(px + 5, py + 4, size - 10, size * 0.25, size * 0.12);
+  context.fillStyle = 'rgba(255,255,255,0.35)';
+  context.fill();
+}
+
+let pixelPattern = null;
+function getPixelPattern() {
+  // patrón de damero 2x2 (3px por celda), creado una sola vez
+  if (!pixelPattern) {
+    const tile = document.createElement('canvas');
+    tile.width = tile.height = 6;
+    const t = tile.getContext('2d');
+    t.fillStyle = 'rgba(0,0,0,0.18)';
+    t.fillRect(0, 0, 3, 3);
+    t.fillRect(3, 3, 3, 3);
+    pixelPattern = t.createPattern(tile, 'repeat');
+  }
+  return pixelPattern;
+}
+
+function drawBlockPixel(context, px, py, color, size) {
+  context.fillStyle = color;
+  context.fillRect(px, py, size, size);
+  // textura de damero
+  context.fillStyle = getPixelPattern();
+  context.fillRect(px + 3, py + 3, size - 6, size - 6);
+  // borde oscuro
+  context.strokeStyle = 'rgba(0,0,0,0.55)';
+  context.lineWidth = 3;
+  context.strokeRect(px + 1.5, py + 1.5, size - 3, size - 3);
+}
+
 function drawGrid() {
-  ctx.strokeStyle = '#22222e';
+  ctx.strokeStyle = skin.grid;
   ctx.lineWidth = 0.5;
   for (let c = 1; c < COLS; c++) {
     ctx.beginPath();
@@ -301,4 +398,37 @@ document.addEventListener('keydown', e => {
 
 restartBtn.addEventListener('click', init);
 
+// ---- Selección de skin ----
+function loadSkin() {
+  try { return localStorage.getItem(SKIN_KEY); } catch (_) { return null; }
+}
+
+function applySkin(key) {
+  if (!Object.prototype.hasOwnProperty.call(SKINS, key)) key = 'retro';
+  skin = SKINS[key];
+  skinSelect.value = key;
+  canvas.style.background = skin.bg;
+  nextCanvas.style.background = skin.bg;
+  // redibujar al instante (también en pausa / game over)
+  if (current) draw();
+  if (next) drawNext();
+}
+
+for (const [key, s] of Object.entries(SKINS)) {
+  skinSelect.add(new Option(s.name, key));
+}
+skinSelect.addEventListener('change', () => {
+  applySkin(skinSelect.value);
+  try { localStorage.setItem(SKIN_KEY, skinSelect.value); } catch (_) { /* sin storage */ }
+  skinSelect.blur(); // que las flechas no cambien el skin al jugar
+});
+// si el select conserva el foco, las teclas de juego van a la pieza
+skinSelect.addEventListener('keydown', e => {
+  if (e.code.startsWith('Arrow') || e.code === 'Space') {
+    e.preventDefault();
+    skinSelect.blur();
+  }
+});
+
+applySkin(loadSkin());
 init();

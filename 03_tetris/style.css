@@ -70,6 +70,24 @@ body {
   border-radius: 4px;
 }
 
+/* ---- Selector de skin ---- */
+#skin-select {
+  background: #1a1a25;
+  color: #7aa2f7;
+  border: 1px solid #2a2a3a;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#skin-select:focus {
+  outline: none;
+  border-color: #7aa2f7;
+}
+
 /* ---- Controles ---- */
 .controls ul {
   list-style: none;
