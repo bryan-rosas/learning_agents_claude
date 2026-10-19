@@ -19,7 +19,11 @@ All logic is in `game.js` (plain `<script>`, `'use strict'`), no modules. State 
 - Flow: `init()` → `loop(ts)` (rAF, accumulates `dropAccum`, gravity step every `dropInterval` ms) → `lockPiece()` = `merge()` → `clearLines()` → `spawn()`. `spawn()` promotes `next` to `current` and calls `endGame()` if it collides immediately.
 - `clearLines` owns level/speed progression: level = `floor(lines/10)+1`, `dropInterval = max(100, 1000 - (level-1)*90)`, score = `LINE_SCORES[n] * level`. Soft drop +1/row, hard drop +2/cell.
 - Rendering: `draw()` repaints the whole board each frame (grid, board, ghost via `ghostY()` at alpha 0.2, current piece). `drawBlock(context, x, y, colorIndex, size, alpha)` is shared by the main canvas and the NEXT preview canvas (`drawNext`). HUD is DOM (`updateHUD`); pause/game-over use the `#overlay` element toggled with the `hidden` class.
-- Input: single `keydown` listener (Arrows, `X`, Space, `P`). Movement is not tied to the loop, so it applies immediately.
+- Input: single `keydown` listener (Arrows, `X`, Space, `P`). Movement is not tied to the loop, so it applies immediately. It returns early when `e.target` is an `<input>` (name field).
+- Start/records (section `// ---- Tabla de records local ----` at the bottom of `game.js`): the script ends with `showStart()` (sets `gameOver = true`, shows overlay with "Jugar"), not `init()`; `#restart-btn` → `init`. `setOverlayMode('start'|'gameover'|'pause')` toggles `#name-form`, `#overlay-msg`, `#records` and the button text; `endGame()`/`togglePause()` call it. `endGame()` also calls `saveStats()`; in gameover mode the name form appears if `qualifies(score)` (no autofocus on purpose). `#restart-btn` blurs itself on click so Enter/Space during play can't re-trigger `init`.
+- Combo: `clearLines` → `updateCombo(cleared)`; `combo` = consecutive locks that cleared lines, `maxCombo` per game (reset in `init`). `combo, maxCombo` are declared next to the other state globals; `highlightIdx` (row to highlight) lives in the records section.
+- Storage: `localStorage['tetris.records']` = top 5 `{name, score, lines, maxCombo, date}` sorted desc; `localStorage['tetris.stats']` = `{bestCombo, maxLines}` across all games. Always go through `readJSON`/`writeJSON` (try/catch for corrupt JSON / unavailable storage). Table rows are built with `textContent` (names are user input).
+- CSS: `.overlay-box .hidden` uses `!important` so it beats id selectors like `#name-form { display:flex }`.
 
 ## Gotchas
 

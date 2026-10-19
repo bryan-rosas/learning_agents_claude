@@ -150,3 +150,113 @@ kbd {
 #restart-btn:hover {
   background: #9bbdff;
 }
+
+/* ---- Records ---- */
+/* utilitaria: gana a los display de selectores por id */
+.overlay-box .hidden {
+  display: none !important;
+}
+
+#overlay-msg {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: #ffd54f;
+}
+
+#name-form {
+  display: flex;
+  gap: 8px;
+}
+
+#name-input {
+  width: 150px;
+  background: #1a1a25;
+  border: 1px solid #3a3a5a;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 14px;
+  color: #7aa2f7;
+  outline: none;
+  user-select: text;
+}
+
+#name-input:focus {
+  border-color: #7aa2f7;
+}
+
+#save-btn,
+#reset-records-btn {
+  background: #22223a;
+  color: #e0e0e0;
+  border: 1px solid #3a3a5a;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: border-color 0.15s;
+}
+
+#save-btn:hover,
+#reset-records-btn:hover {
+  border-color: #7aa2f7;
+}
+
+#reset-records-btn {
+  padding: 5px 10px;
+  font-size: 10px;
+  color: #888;
+}
+
+.records {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.records-table {
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.records-table th {
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: #555570;
+  font-weight: 600;
+  padding: 2px 6px;
+}
+
+.records-table td {
+  font-family: 'Courier New', Courier, monospace;
+  color: #aaa;
+  padding: 3px 6px;
+  text-align: right;
+}
+
+.records-table td:nth-child(2) {
+  text-align: left;
+  color: #e0e0e0;
+}
+
+.records-table tr.current td {
+  color: #0f0f17;
+  background: #7aa2f7;
+  font-weight: 700;
+}
+
+.records-table td.records-empty {
+  text-align: center;
+  color: #555570;
+}
+
+#records-stats {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 12px;
+  color: #7aa2f7;
+}
