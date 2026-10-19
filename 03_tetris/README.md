@@ -41,7 +41,8 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Vista previa** de la siguiente pieza.
 - **Sistema de puntuación** clásico de Tetris (100 / 300 / 500 / 800 multiplicado por nivel).
 - **Niveles** que aumentan cada 10 líneas y aceleran la caída.
-- **Pausa** y **Game Over** con opción de reinicio.
+- **Menú de pausa** (`P` / `Esc`): reanudar, reiniciar, ver controles y elegir el **nivel inicial** (1–10). Navegable con teclado.
+- **Game Over** con opción de reinicio.
 
 ---
 
@@ -84,7 +85,18 @@ Después abre `http://localhost:8000` en el navegador.
 | `↑` o `X` | Rotar la pieza en sentido horario |
 | `↓`       | Soft drop (bajar más rápido)      |
 | `Espacio` | Hard drop (caída instantánea)     |
-| `P`       | Pausar / reanudar                 |
+| `P` / `Esc` | Abrir / cerrar el menú de pausa |
+
+Dentro del menú de pausa:
+
+| Tecla               | Acción                                   |
+| ------------------- | ---------------------------------------- |
+| `↑` / `↓`           | Moverse entre las opciones               |
+| `←` / `→`           | Bajar / subir el nivel inicial (1–10)    |
+| `Enter` / `Espacio` | Activar la opción seleccionada           |
+| `P` / `Esc`         | Reanudar                                 |
+
+Mientras el menú está abierto, las teclas de juego se bloquean. Al reanudar se ignoran las teclas que sigan mantenidas (hay que volver a pulsarlas), para evitar movimientos accidentales.
 
 ---
 
@@ -98,7 +110,7 @@ Define la estructura visual:
 
 - Un `<canvas id="board">` de **300 × 600** píxeles donde se renderiza el tablero.
 - Un panel lateral con `SCORE`, `LINES`, `LEVEL`, vista de la siguiente pieza y la lista de controles.
-- Un overlay para los estados **PAUSA** y **GAME OVER**.
+- Un overlay `#overlay` para **GAME OVER** y otro `#pause-menu` para el **menú de pausa** (Reanudar, Reiniciar, nivel inicial, Ver controles).
 
 ### 2. `style.css`
 
@@ -115,7 +127,8 @@ Contiene toda la lógica del juego. A grandes rasgos:
 - **Game loop** (`loop`): basado en `requestAnimationFrame`, acumula el tiempo transcurrido y baja la pieza una fila cuando se supera `dropInterval`.
 - **Limpieza de líneas** (`clearLines`): recorre el tablero de abajo hacia arriba; cada fila completa se elimina y se inserta una vacía en la cima.
 - **Puntuación**: usa la tabla clásica `[0, 100, 300, 500, 800]` multiplicada por el nivel actual; el hard drop suma 2 puntos por celda recorrida y el soft drop 1 punto por fila.
-- **Nivel y velocidad**: el nivel sube cada 10 líneas; la velocidad de caída se calcula como `max(100, 1000 − (level − 1) × 90)` milisegundos.
+- **Nivel y velocidad**: el nivel es `max(gameStartLevel, floor(lines / 10) + 1)` (copia de `startLevel` fijada en `init()`); la velocidad de caída se calcula como `max(100, 1000 − (level − 1) × 90)` milisegundos (`intervalFor`).
+- **Menú de pausa** (`togglePause`, `openPauseMenu`, `handleMenuKey`): detiene el bucle, muestra `#pause-menu` y lo oculta al reanudar. El nivel inicial elegido se guarda en `startLevel` y se aplica en `init()` (al pulsar Reiniciar).
 - **Ghost piece** (`ghostY`): proyecta la posición final de la pieza actual hacia abajo y la dibuja con `globalAlpha = 0.2`.
 
 ### Flujo del juego
@@ -134,6 +147,7 @@ init()
      └─ requestAnimationFrame(loop)
 
    keydown → mover / rotar / soft-drop / hard-drop / pausa
+           (en pausa: solo navegación del menú)
 ```
 
 Cuando una pieza recién generada ya colisiona al aparecer (`spawn`), se dispara `endGame()` y se muestra el overlay de **Game Over**.
@@ -175,7 +189,9 @@ Algunos parámetros fáciles de tunear en `game.js`:
 | `BLOCK`        | Tamaño en píxeles de cada celda          | `30`                  |
 | `COLORS`       | Paleta de colores por tipo de pieza      | 7 colores             |
 | `LINE_SCORES`  | Puntos por 1, 2, 3 o 4 líneas eliminadas | `[0,100,300,500,800]` |
-| `dropInterval` | Velocidad inicial de caída en ms         | `1000`                |
+| `dropInterval` | Velocidad inicial de caída en ms         | `1000` (nivel 1)      |
+| `MAX_START_LEVEL` | Nivel inicial máximo seleccionable    | `10`                  |
+| `startLevel`   | Nivel inicial (se elige en el menú de pausa) | `1`               |
 
 > Si cambias `COLS`, `ROWS` o `BLOCK`, recuerda ajustar también `width` y `height` del `<canvas id="board">` en `index.html` para que coincida (`COLS × BLOCK` × `ROWS × BLOCK`).
 

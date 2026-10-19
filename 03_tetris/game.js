@@ -27,6 +27,7 @@ const PIECES = [
 ];
 
 const LINE_SCORES = [0, 100, 300, 500, 800];
+const MAX_START_LEVEL = 10;
 
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
@@ -39,8 +40,26 @@ const overlay = document.getElementById('overlay');
 const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
+// Menú de pausa
+const pauseMenu = document.getElementById('pause-menu');
+const pmResumeBtn = document.getElementById('pm-resume');
+const pmRestartBtn = document.getElementById('pm-restart');
+const pmControlsBtn = document.getElementById('pm-controls');
+const pmControlsList = document.getElementById('pm-controls-list');
+const pmLevelDown = document.getElementById('pm-level-down');
+const pmLevelUp = document.getElementById('pm-level-up');
+const pmLevelValue = document.getElementById('pm-level-value');
+const pmButtons = [...pauseMenu.querySelectorAll('button')];
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+let startLevel = 1;     // nivel inicial elegido en el menú (se aplica en init)
+let gameStartLevel = 1; // nivel inicial de la partida en curso
+const keysDown = new Set();   // teclas físicamente pulsadas
+let blockedKeys = new Set();  // teclas mantenidas al reanudar: se ignoran hasta soltarlas
+
+function intervalFor(lvl) {
+  return Math.max(100, 1000 - (lvl - 1) * 90);
+}
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -106,8 +125,8 @@ function clearLines() {
   if (cleared) {
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
-    level = Math.floor(lines / 10) + 1;
-    dropInterval = Math.max(100, 1000 - (level - 1) * 90);
+    level = Math.max(gameStartLevel, Math.floor(lines / 10) + 1);
+    dropInterval = intervalFor(level);
     updateHUD();
   }
 }
@@ -230,13 +249,83 @@ function togglePause() {
   if (gameOver) return;
   paused = !paused;
   if (!paused) {
+    closePauseMenu();
+    blockedKeys = new Set(keysDown);
     lastTime = performance.now();
-    loop(lastTime);
+    cancelAnimationFrame(animId);
+    animId = requestAnimationFrame(loop);
   } else {
     cancelAnimationFrame(animId);
-    overlayTitle.textContent = 'PAUSA';
-    overlayScore.textContent = '';
-    overlay.classList.remove('hidden');
+    openPauseMenu();
+  }
+}
+
+// ---- Menú de pausa ----
+function openPauseMenu() {
+  pmControlsList.classList.add('hidden');
+  pmControlsBtn.setAttribute('aria-expanded', 'false');
+  pauseMenu.classList.remove('hidden');
+  pmResumeBtn.focus();
+}
+
+function closePauseMenu() {
+  pauseMenu.classList.add('hidden');
+  if (pauseMenu.contains(document.activeElement)) document.activeElement.blur();
+}
+
+function setStartLevel(lvl) {
+  startLevel = Math.min(MAX_START_LEVEL, Math.max(1, lvl));
+  pmLevelValue.textContent = startLevel;
+}
+
+function toggleControls() {
+  const hidden = pmControlsList.classList.toggle('hidden');
+  pmControlsBtn.setAttribute('aria-expanded', String(!hidden));
+}
+
+// Navegación con flechas entre los elementos enfocables del menú
+function moveMenuFocus(dir) {
+  const i = pmButtons.indexOf(document.activeElement);
+  const n = (i + dir + pmButtons.length) % pmButtons.length;
+  pmButtons[i === -1 ? 0 : n].focus();
+}
+
+function handleMenuKey(e) {
+  switch (e.code) {
+    case 'Escape':
+    case 'KeyP':
+      e.preventDefault();
+      if (!e.repeat) togglePause();
+      break;
+    case 'ArrowUp':
+      e.preventDefault();
+      moveMenuFocus(-1);
+      break;
+    case 'ArrowDown':
+      e.preventDefault();
+      moveMenuFocus(1);
+      break;
+    case 'ArrowLeft':
+      e.preventDefault();
+      setStartLevel(startLevel - 1);
+      break;
+    case 'ArrowRight':
+      e.preventDefault();
+      setStartLevel(startLevel + 1);
+      break;
+    case 'Tab':
+      // focus trap dentro del menú
+      e.preventDefault();
+      moveMenuFocus(e.shiftKey ? -1 : 1);
+      break;
+    case 'Space':
+    case 'Enter':
+      // activan el botón enfocado de forma nativa; si no hay, evita scroll
+      if (!pmButtons.includes(document.activeElement)) {
+        e.preventDefault();
+        pmResumeBtn.focus();
+      }
+      break;
   }
 }
 
@@ -260,23 +349,42 @@ function init() {
   board = createBoard();
   score = 0;
   lines = 0;
-  level = 1;
+  gameStartLevel = startLevel;
+  level = gameStartLevel;
   paused = false;
   gameOver = false;
-  dropInterval = 1000;
+  dropInterval = intervalFor(level);
   dropAccum = 0;
   lastTime = performance.now();
   next = randomPiece();
   spawn();
   updateHUD();
   overlay.classList.add('hidden');
+  closePauseMenu();
+  blockedKeys = new Set(keysDown);
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
 
+document.addEventListener('keydown', e => { keysDown.add(e.code); }, true);
+document.addEventListener('keyup', e => {
+  keysDown.delete(e.code);
+  blockedKeys.delete(e.code);
+});
+window.addEventListener('blur', () => { keysDown.clear(); blockedKeys.clear(); });
+
 document.addEventListener('keydown', e => {
-  if (e.code === 'KeyP') { togglePause(); return; }
-  if (paused || gameOver) return;
+  if (paused) { handleMenuKey(e); return; }
+  if (e.code === 'KeyP' || e.code === 'Escape') {
+    if (!e.repeat) togglePause();
+    return;
+  }
+  if (gameOver) return;
+  // Tras reanudar/reiniciar, exige una pulsación nueva de las teclas mantenidas
+  if (blockedKeys.has(e.code)) {
+    if (e.repeat) { e.preventDefault(); return; }
+    blockedKeys.delete(e.code);
+  }
   switch (e.code) {
     case 'ArrowLeft':
       if (!collide(current.shape, current.x - 1, current.y)) current.x--;
@@ -300,5 +408,10 @@ document.addEventListener('keydown', e => {
 });
 
 restartBtn.addEventListener('click', init);
+pmResumeBtn.addEventListener('click', togglePause);
+pmRestartBtn.addEventListener('click', init);
+pmControlsBtn.addEventListener('click', toggleControls);
+pmLevelDown.addEventListener('click', () => setStartLevel(startLevel - 1));
+pmLevelUp.addEventListener('click', () => setStartLevel(startLevel + 1));
 
 init();
